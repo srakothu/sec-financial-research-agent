@@ -1,0 +1,41 @@
+{
+  "tickers": {
+    "0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."}
+  },
+  "submissions": {
+    "name": "Apple Inc.",
+    "tickers": ["AAPL"],
+    "filings": {
+      "recent": {
+        "form": ["10-Q", "10-K", "8-K"],
+        "accessionNumber": ["0000320193-26-000006", "0000320193-25-000079", "0000320193-25-000055"],
+        "filingDate": ["2026-01-30", "2025-10-31", "2025-05-01"],
+        "reportDate": ["2025-12-27", "2025-09-27", "2025-05-01"],
+        "primaryDocument": ["aapl-20251227.htm", "aapl-20250927.htm", "aapl-20250501.htm"],
+        "items": ["", "", "2.02,9.01"]
+      },
+      "files": []
+    }
+  },
+  "companyfacts": {
+    "cik": 320193,
+    "entityName": "Apple Inc.",
+    "facts": {
+      "us-gaap": {
+        "RevenueFromContractWithCustomerExcludingAssessedTax": {
+          "units": {
+            "USD": [
+              {"start": "2023-10-01", "end": "2024-09-28", "val": 391035000000, "accn": "0000320193-25-000079", "fy": 2025, "fp": "FY", "form": "10-K", "filed": "2025-10-31"},
+              {"start": "2024-09-29", "end": "2025-09-27", "val": 416161000000, "accn": "0000320193-25-000079", "fy": 2025, "fp": "FY", "form": "10-K", "filed": "2025-10-31"},
+              {"start": "2024-09-29", "end": "2024-12-28", "val": 124300000000, "accn": "0000320193-26-000006", "fy": 2026, "fp": "Q1", "form": "10-Q", "filed": "2026-01-30"},
+              {"start": "2025-09-28", "end": "2025-12-27", "val": 143756000000, "accn": "0000320193-26-000006", "fy": 2026, "fp": "Q1", "form": "10-Q", "filed": "2026-01-30"}
+            ]
+          }
+        }
+      }
+    }
+  },
+  "8-k": "<h2>Item 2.02 Results of Operations and Financial Condition.</h2><p>On May 1, 2025, Apple Inc. (“Apple”) issued a press release regarding Apple’s financial results for its second fiscal quarter ended March 29, 2025.</p>",
+  "index": "<table><tr><td>2</td><td>EX-99.1</td><td><a href='/Archives/edgar/data/320193/000032019325000055/a8-kex991q2202503292025.htm'>a8-kex991q2202503292025.htm</a></td><td>EX-99.1</td></tr></table>",
+  "exhibit": "<p>The Company posted quarterly revenue of $95.4 billion, up 5 percent year over year…</p>"
+}
