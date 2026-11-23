@@ -51,7 +51,7 @@ def test_ai_selects_evidence_and_validates_sources(monkeypatch):
     monkeypatch.setattr(analyst,"OpenAIResearch",lambda *_:model)
     def run(end):
         model.structured.side_effect = [analyst.Plan(focus="profitability"), analyst.Brief(
-            findings=[analyst.Finding(interpretation="Margins held steady.",source_dates=[end])],
+            findings=[analyst.Finding(headline="Margins held steady", interpretation="Margins held steady.",source_dates=[end])],
             limitation="Four observations.") ]
         return analyst.analyze(report)
     assert run("2023-12-31")["focus"] == "profitability"

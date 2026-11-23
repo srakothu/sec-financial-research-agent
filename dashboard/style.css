@@ -25,3 +25,38 @@ a{color:#234ab6}.chips,#history{display:flex;flex-wrap:wrap;gap:6px}
 :focus-visible{outline:3px solid #7097fd;outline-offset:3px}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
 .metrics article,.metrics article+article{padding:14px;margin:0}.metrics strong{display:block;font:600 1.25rem/1.7 Inter,system-ui,sans-serif}.bar.negative{background:#a44e54}.hero .introTitle{overflow-wrap:anywhere}
+
+.brief-output:not(:empty) { margin-top: 18px; }
+.brief-heading {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 18px;
+  border-top: 1px solid var(--line); padding: 20px 0 14px;
+}
+.brief-heading h4 { margin: 0; font: 500 clamp(1.55rem,3vw,2.1rem)/1.15 Georgia,serif; }
+.brief-heading span, .brief-chart small { color: #52637a; font-size: .81rem; }
+.brief-charts { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,215px),1fr)); gap: 10px; }
+.brief-chart {
+  margin: 0; padding: 15px; min-width: 0; border: 1px solid #d6e0eb;
+  border-radius: 9px; background: #f6f8fc; --fill: #3f69bf;
+}
+.brief-chart:nth-child(2) { --fill: #137a73; }
+.brief-chart:nth-child(3) { --fill: #7462ad; }
+.brief-chart figcaption { font-weight: 700; margin-bottom: 9px; }
+.brief-chart small { display: block; line-height: 1.4; margin: 4px 0; }
+.brief-point {
+  display: grid; grid-template-columns: 4ch minmax(25px,1fr) auto;
+  align-items: center; gap: 8px; margin: 9px 0; font-size: .78rem; font-variant-numeric: tabular-nums;
+}
+.brief-point > span:last-child { min-width: 7ch; text-align: right; }
+.brief-track { position: relative; background: #e3e9f2; height: 7px; border-radius: 2px; }
+.brief-track::after { content: ""; position: absolute; left: var(--zero); inset-block: -2px; border-left: 1px solid #79899f; }
+.brief-track i { position: absolute; height: 100%; background: var(--fill); border-radius: 2px; }
+.brief-track .loss { background: #ad5152; }
+.brief-findings { margin: 18px 0 0; }
+.brief-finding { padding: 14px 0; border-top: 1px solid #e0e6ef; }
+.brief-finding h5 { margin: 0 0 4px; font-size: 1.04rem; line-height: 1.35; }
+.brief-finding p,.brief-limit p { max-width: 68ch; margin: 0 0 6px; color: #34475d; }
+.brief-output summary { width: fit-content; cursor: pointer; font-size: .85rem; color: #294d88; }
+.brief-links { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.brief-links a { background: #edf2fb; border-radius: 4px; padding: 4px 8px; font-size: .8rem; }
+.brief-limit { padding: 10px 14px; background: #f4f6f8; border-radius: 6px; }
+.brief-limit p { margin: 8px 0 0; font-size: .9rem; }

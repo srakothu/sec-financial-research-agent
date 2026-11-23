@@ -15,6 +15,7 @@ class Plan(BaseModel):
 
 
 class Finding(BaseModel):
+    headline: str
     interpretation: str
     source_dates: list[str]
 
@@ -51,10 +52,17 @@ def analyze(report):
         evidence = {end: values for end, values in evidence.items() if values}
         if not evidence:
             raise ResearchError("The selected investigation lacked usable evidence.")
-        brief = model.structured("Analyze the selected financial series. Return one to three concise findings. "
-                             "Cite the supplied period end dates for each statement. Discuss changes and uncertainty. "
-                             "Use only the supplied data. Avoid causal claims, external events, forecasts and advice.",
-                             json.dumps({"focus": plan.focus, "company":report["company"], "series":evidence}), Brief)
+        brief = model.structured(
+            "Write a brief for a reader new to finance. Put the most important change first. "
+            "Return one to three distinct findings. Give each a short, specific headline in everyday "
+            "language and one sentence of at most 28 words explaining why the change matters. "
+            "Use at most two rounded numbers per sentence (e.g. $1.2B for USD); keep other currencies "
+            "explicit. Use percentage points for changes in margins. Refer to years in the prose and "
+            "put exact period-end dates only in source_dates. The dashboard charts each annual value, "
+            "so avoid listing the series. Cite the periods used in each finding. Give one short "
+            "limitation specific to the data. Use only the supplied evidence. Avoid causal claims, "
+            "forecasts, advice and comparisons across currencies.",
+            json.dumps({"focus": plan.focus, "company":report["company"], "series":evidence}), Brief)
     if not 1 <= len(brief.findings) <= 3 or any(not f.source_dates or not set(f.source_dates) <= evidence.keys() for f in brief.findings):
         raise ResearchError("The generated analysis lacked valid filing references.")
     return brief.model_dump() | {"focus":plan.focus}

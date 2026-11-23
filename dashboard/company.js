@@ -30,6 +30,100 @@ function chartSeries(card, periods, metric) {
   }
 }
 
+const briefThemes = {
+  growth: {title: "Growth", metrics: ["revenue", "operating_income", "operating_margin"]},
+  profitability: {title: "Profitability", metrics: ["revenue", "net_income", "net_margin"]},
+  cash_flow: {title: "Cash flow", metrics: ["operating_cash_flow", "net_income"]},
+  balance_sheet: {title: "Balance sheet", metrics: ["total_assets", "net_income"]}
+};
+
+function annualPoint(period, metric) {
+  if (metric !== "operating_margin") return period.values[metric];
+  const {revenue, operating_income: income} = period.values;
+  if (revenue?.value > 0 && income && income.unit === revenue.unit && income.start === revenue.start) {
+    return {value: 100 * income.value / revenue.value, unit: "%"};
+  }
+}
+
+function briefNumber(value, unit) {
+  if (unit === "%") return value.toLocaleString("en-US", {maximumFractionDigits: 1}) + "%";
+  const compact = new Intl.NumberFormat("en-US", {notation: "compact", maximumFractionDigits: 1});
+  return unit === "USD" ? (value < 0 ? "−$" : "$") + compact.format(Math.abs(value)) : compact.format(value) + " " + unit;
+}
+
+function briefChart(periods, metric) {
+  const series = periods.map(p => annualPoint(p, metric));
+  const unit = series.filter(Boolean).at(-1)?.unit;
+  if (!unit) return null;
+  const values = series.map(point => point?.unit === unit ? point.value : null);
+  const low = Math.min(0, ...values.filter(v => v !== null));
+  const high = Math.max(0, ...values.filter(v => v !== null));
+  const span = high - low || 1;
+  const zero = -100 * low / span;
+  const chart = el("figure", undefined, "brief-chart");
+  const title = metricNames[metric] || "Operating margin";
+  const caption = el("figcaption", title);
+  chart.append(caption);
+  if (metric.endsWith("_margin")) {
+    chart.append(el("small", metric === "operating_margin" ? "Share of revenue left after operating costs" : "Share of revenue kept as profit"));
+  }
+  periods.forEach((period, i) => {
+    const value = values[i];
+    const line = el("div", undefined, "brief-point");
+    const year = el("time", period.end.slice(0, 4));
+    year.dateTime = period.end;
+    year.title = "Period ended " + period.end;
+    const track = el("span", undefined, "brief-track");
+    track.setAttribute("aria-hidden", "true");
+    track.style.setProperty("--zero", zero + "%");
+    const label = el("span", value === null ? "—" : briefNumber(value, unit));
+    if (value !== null) {
+      const bar = el("i", undefined, value < 0 ? "loss" : "gain");
+      bar.style.left = (zero + Math.min(0, value) * 100 / span) + "%";
+      bar.style.width = (100 * Math.abs(value) / span) + "%";
+      track.append(bar);
+      label.title = period.end + " · " + value.toLocaleString("en-US") + " " + unit;
+    } else {
+      label.title = "No comparable figure in " + unit;
+      label.setAttribute("aria-label", label.title);
+    }
+    line.append(year, track, label);
+    chart.append(line);
+  });
+  if (values.includes(null)) chart.append(el("small", "— No comparable figure in " + unit));
+  return chart;
+}
+
+function renderBrief(output, brief, periods) {
+  const theme = briefThemes[brief.focus];
+  const heading = el("div", undefined, "brief-heading");
+  heading.append(el("h4", theme.title + " brief"), el("span", "Annual filings · " +
+    periods[0].end.slice(0, 4) + "–" + periods.at(-1).end.slice(0, 4)));
+  const charts = el("div", undefined, "brief-charts");
+  for (const metric of theme.metrics) {
+    const chart = briefChart(periods, metric);
+    if (chart) charts.append(chart);
+  }
+  const findings = el("div", undefined, "brief-findings");
+  for (const finding of brief.findings) {
+    const card = el("section", undefined, "brief-finding");
+    card.append(el("h5", finding.headline), el("p", finding.interpretation));
+    const cited = periods.filter(p => finding.source_dates.includes(p.end));
+    if (cited.length) {
+      const details = el("details");
+      const links = el("div", undefined, "brief-links");
+      details.append(el("summary", "View " + (cited.length === 1 ? "1 filing" : cited.length + " filings")));
+      for (const p of cited) links.append(link(p.form + " · " + p.end, p.url));
+      details.append(links);
+      card.append(details);
+    }
+    findings.append(card);
+  }
+  const limit = el("details", undefined, "brief-limit");
+  limit.append(el("summary", "Limits of this analysis"), el("p", brief.limitation));
+  output.replaceChildren(heading, charts, findings, limit);
+}
+
 function showCompany(data, symbol) {
   const periods = data.periods;
   result.replaceChildren();
@@ -74,9 +168,10 @@ function showCompany(data, symbol) {
       el("small","Theil–Sen regression fitted to " + t.training_years + " earlier annual observations. The latest observation was held out. This comparison does not establish a cause."));
   } else analysis.append(el("p","The trend model needs a latest value and three earlier annual observations in the same unit for revenue, net income or assets."));
   result.append(analysis);
-  const ai = el("article"), button = el("button","Generate AI brief","export"), output = el("div");
+  const ai = el("article"), button = el("button","Generate AI brief","export"), output = el("div", undefined, "brief-output");
+  output.setAttribute("aria-live", "polite");
   ai.append(el("h3","AI analyst"),el("p",data.ai_enabled ?
-    "Investigate a financial theme and interpret the evidence with filing citations." :
+    "See what changed across annual filings, with charts and a short explanation." :
     "Written analysis requires an OpenAI API key configured by the site owner. The historical trend model runs independently."));
   if (data.ai_enabled && keys.length) ai.append(button,output);
   result.append(ai);
@@ -87,16 +182,8 @@ function showCompany(data, symbol) {
       const response = await fetch("/api/brief?company="+encodeURIComponent(symbol),{method:"POST", headers:{"Content-Type":"application/json"}});
       const brief = await response.json();
       if (!response.ok) throw new Error(brief.error || "Analysis unavailable.");
-      output.replaceChildren(el("h3",brief.focus.replaceAll("_"," ")));
-      for (const f of brief.findings) {
-        const paragraph = el("p", f.interpretation + " ");
-        for (const end of new Set(f.source_dates)) {
-          const period = periods.find(p => p.end === end);
-          if (period) paragraph.append(link(end,period.url), " ");
-        }
-        output.append(paragraph);
-      }
-      output.append(el("small", brief.limitation));
+      renderBrief(output, brief, periods);
+      button.hidden = true;
     } catch (err) { output.replaceChildren(el("p",err.message)); button.disabled=false; }
   };
   const filings = el("article");
