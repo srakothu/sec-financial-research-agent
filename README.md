@@ -4,6 +4,14 @@
 
 This Python CLI answers questions like that one using SEC EDGAR. Each numeric answer includes the period, unit, XBRL concept, filing date, accession number, and document link. It also lists recent filings and retrieves passages from 8-K announcements and their earnings exhibits.
 
+## Open the dashboard
+
+On a Mac with the project installed, double-click **Open-Dashboard.command** in Finder. Your browser opens Filing Desk. Select one of four Apple sample questions, or select **Live SEC lookup**, enter a ticker, and click **Run lookup**. Live requests use the contact configured in `.env`. To explore the four saved examples on any computer without Python, open `dashboard/index.html` in a browser.
+
+### Host a public copy
+
+[Deploy the dashboard on Render](https://render.com/deploy?repo=https://github.com/srakothu/sec-financial-research-agent). Sign in, review the free web service, and enter an app name plus your contact email for `SEC_USER_AGENT`. Apply the deployment. Open the service URL Render displays once it is live. The dashboard uses the existing Python research workflow and requires no OpenAI key.
+
 ## Run the demo
 
 With Git and Python 3.12 installed, run the following in a macOS or Linux terminal.
