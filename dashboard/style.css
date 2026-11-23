@@ -23,3 +23,5 @@ a{color:#234ab6}.chips,#history{display:flex;flex-wrap:wrap;gap:6px}
 .chart .row{border:0;padding:9px 0 5px}.track{height:10px;background:#edf0f6;border-radius:3px;margin-bottom:6px}
 .bar{height:100%;background:#9bafd3;border-radius:3px}.track:last-child .bar{background:#345cd3}
 :focus-visible{outline:3px solid #7097fd;outline-offset:3px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+.metrics article,.metrics article+article{padding:14px;margin:0}.metrics strong{display:block;font:600 1.25rem/1.7 Inter,system-ui,sans-serif}.bar.negative{background:#a44e54}.hero .introTitle{overflow-wrap:anywhere}

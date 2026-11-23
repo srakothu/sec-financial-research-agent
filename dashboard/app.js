@@ -86,8 +86,8 @@ function switchMode(next) {
   else if (location.protocol === "file:") message("Open Open-Dashboard.command from the project folder to connect to live SEC data.");
   else {
     const card = el("article", undefined, "hero intro");
-    card.append(el("small","SEC EDGAR"),el("h2","Find a filing." ,"introTitle"),
-      el("p","Enter a ticker and select Run lookup to retrieve the reported figures and original document."));
+    card.append(el("small","SEC EDGAR"),el("h2","Research a company." ,"introTitle"),
+      el("p","Enter a ticker and run a lookup to see annual financials, profitability and a historical trend model."));
     result.replaceChildren(card);
   }
 }
@@ -124,11 +124,12 @@ byId("query").onsubmit = async event => {
   }
   message("Looking up SEC filings…");
   try {
-    const response = await fetch("/api/research?" + params);
+    const response = await fetch(intent === "company" ? "/api/company?company=" + encodeURIComponent(entry.company) : "/api/research?" + params);
     const data = await response.json();
     if (ticket !== version) return;
     if (!response.ok) throw new Error(data.error || "The server could not complete this lookup.");
-    show(data);
+    if (intent === "company") showCompany(data, entry.company);
+    else show(data);
     rememberLookup(entry);
   } catch (err) {
     if (ticket === version) message(err.message);
@@ -192,4 +193,5 @@ function rememberLookup(entry) {
   try { localStorage.setItem(historyKey, JSON.stringify(historyItems)); } catch {}
   drawHistory();
 }
+byId("intent").onchange();
 switchMode(location.protocol === "file:" ? "sample" : "live");

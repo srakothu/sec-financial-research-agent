@@ -6,7 +6,15 @@ This Python CLI answers questions like that one using SEC EDGAR. Each numeric an
 
 ## Open the dashboard
 
-On a Mac with the project installed, double-click **Open-Dashboard.command** in Finder. Your browser opens Filing Desk. The dashboard opens in **Live SEC lookup** mode. Enter a ticker and select **Run lookup** for the latest annual result, or choose a fiscal quarter, a filing list, or an earnings release. Revenue comparisons include a chart. Each result can be downloaded as a JSON evidence file with its sources. Your last five successful queries are stored in your browser for reuse. Choose **Apple sample** for the offline examples. Live requests use the contact configured in `.env`. To explore the four saved examples on any computer without Python, open `dashboard/index.html` in a browser.
+On a Mac with the project installed, double-click **Open-Dashboard.command** in Finder. Your browser opens Filing Desk. The dashboard opens in **Live SEC lookup** mode. Enter a ticker and select **Run lookup** for the company dashboard. You can also choose a single metric, a filing list, or an earnings release. Revenue comparisons include a chart. Each result can be downloaded as a JSON evidence file with its sources. Your last five successful queries are stored in your browser for reuse. Choose **Apple sample** for the offline examples. Live requests use the contact configured in `.env`. To explore the four saved examples on any computer without Python, open `dashboard/index.html` in a browser.
+
+### Company dashboard and analyst
+
+A ticker search resolves the filer against the SEC ticker directory. The company dashboard examines up to six original 10-K, 20-F or 40-F filings and looks for consolidated US GAAP or IFRS facts. Annual revenue, profit, assets, diluted EPS and operating cash flow can be explored as dated series. Net margin requires matching revenue and net income periods and units. Revenue growth compares adjacent annual reports as originally filed. Issuers without comparable tagged metrics show gaps and filing links. Foreign listings outside EDGAR and issuer-specific extensions can limit coverage.
+
+The **Trend investigation** fits a Theil–Sen regression to prior observations, holds out the latest year and compares the reported result to the historical baseline. It tries revenue, net income and then assets until it finds sufficient history in the same currency. This model runs without an external AI service.
+
+The **AI analyst** is available when the host sets `OPENAI_API_KEY` on the server. Set it in Render under the service’s **Environment** settings and redeploy. Visitors can then request an AI brief. A model selects a research focus, Python gathers the corresponding series, and a second model call interprets the evidence. The app checks each cited period against the selected evidence before linking its filing. Valid citations do not guarantee that every interpretation is correct. Completed briefs are cached per lookup and fifteen-minute window. The single-worker deployment limits new brief attempts to six per rolling hour per worker lifetime. API usage is billed to the configured account.
 
 ### Host a public copy
 

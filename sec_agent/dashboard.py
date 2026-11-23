@@ -3,6 +3,9 @@ import json
 import os
 import re
 import webbrowser
+from time import monotonic
+from .analyst import analyze
+from .company import overview
 from dataclasses import asdict
 from functools import lru_cache
 from pathlib import Path
@@ -21,7 +24,7 @@ from .workflow import build_graph
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 ASSETS = {"/": ("index.html", "text/html"), "/style.css": ("style.css", "text/css"),
-          "/app.js": ("app.js", "text/javascript"), "/samples.js": ("samples.js", "text/javascript")}
+          "/company.js": ("company.js", "text/javascript"), "/app.js": ("app.js", "text/javascript"), "/samples.js": ("samples.js", "text/javascript")}
 
 
 def present(state):
@@ -51,6 +54,21 @@ def live_client():
     return Edgar(httpx.Client(headers={"User-Agent": agent}, timeout=15))
 
 
+@lru_cache(maxsize=24)
+def report_for(symbol, time_bucket):
+    client = live_client()
+    client.cache.clear()
+    try:
+        return overview(client, symbol)
+    finally:
+        client.cache.clear()
+
+
+@lru_cache(maxsize=24)
+def brief_for(symbol, time_bucket):
+    return analyze(report_for(symbol, time_bucket))
+
+
 def application(env, start):
     path = env["PATH_INFO"]
     status = "200 OK"
@@ -58,6 +76,24 @@ def application(env, start):
     if path in ASSETS:
         name, mime = ASSETS[path]
         body = (ROOT / "dashboard" / name).read_bytes()
+    elif (path == "/api/company" and env["REQUEST_METHOD"] == "GET") or (
+        path == "/api/brief" and env["REQUEST_METHOD"] == "POST"
+    ):
+        try:
+            params = parse_qs(env["QUERY_STRING"], max_num_fields=1)
+            symbol = params.get("company", [""])[0].strip().upper()
+            if not 1 <= len(symbol) <= 128:
+                raise ResearchError("Enter a ticker, CIK or exact SEC company name.")
+            bucket = int(monotonic() // 900)
+            if path == "/api/brief":
+                if env.get("CONTENT_TYPE") != "application/json":
+                    raise ResearchError("Use the dashboard to request an AI brief.")
+                value = brief_for(symbol, bucket)
+            else:
+                value = report_for(symbol, bucket) | {"ai_enabled": bool(os.getenv("OPENAI_API_KEY"))}
+            body = json.dumps(value).encode()
+        except (ResearchError, ValueError) as exc:
+            status, body = "400 Bad Request", json.dumps({"error": str(exc)}).encode()
     elif path == "/api/research" and env["REQUEST_METHOD"] == "GET":
         try:
             params = {k: v[-1] for k, v in parse_qs(env["QUERY_STRING"], max_num_fields=12).items()}
