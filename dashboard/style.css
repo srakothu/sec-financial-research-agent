@@ -1,1 +1,25 @@
 *{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#182c3b;font:16px/1.5 Inter,system-ui,sans-serif}header{background:#122f3e;color:white;display:flex;align-items:center;justify-content:space-between;padding:18px max(5vw,20px)}header a{color:#c6e5e6;font-size:.9rem}.brand{font-weight:700;font-size:1.25rem}main{max-width:1240px;padding:48px 5vw;margin:auto}h1{font:500 clamp(2.5rem,5vw,4.5rem)/1.05 Georgia,serif;letter-spacing:-.05em;margin:0}h2,h3,p{margin:0 0 12px}.sub,small,.muted{color:#536876}.sub{margin:12px 0 22px}nav{display:flex;border-bottom:1px solid #c5cdd0;margin-bottom:22px;gap:12px}button,input,select{font:inherit}button{cursor:pointer}nav button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 4px;color:#50636e}nav button[aria-pressed=true]{border-color:#08786b;color:#075e54;font-weight:700}.layout{display:grid;grid-template-columns:minmax(210px,28%) 1fr;gap:20px;align-items:start}aside,article{background:white;padding:24px;border:1px solid #d4dce0;border-radius:10px}aside h2,article h3{font-size:1.1rem}label{display:block;margin:14px 0;color:#415764;font-weight:600;font-size:.91rem}select,input:not([type=checkbox]){margin-top:5px;width:100%;padding:10px;border:1px solid #aebec5;border-radius:5px;background:white;color:#182c3b}.run{width:100%;border:0;border-radius:5px;background:#08675d;color:white;padding:10px}article+article{margin-top:14px}.hero{background:#123b49;color:white}.hero small{color:#b7d9dc}.hero h2{font-size:1.1rem;margin-top:14px}.number{font:500 clamp(2.2rem,5vw,4.3rem)/1.25 Georgia,serif;letter-spacing:-.045em}.change{color:#c3ebe0}.row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;border-top:1px solid #dde3e5;padding:10px 0}.row strong{font-variant-numeric:tabular-nums}a{color:#006759;text-underline-offset:3px}article p,small{overflow-wrap:anywhere}blockquote{margin:14px 0;border-left:3px solid #398b80;padding-left:14px}[hidden]{display:none!important}@media(max-width:700px){.layout{grid-template-columns:1fr}main{padding:28px 16px}aside,article{padding:17px}header{padding:14px 16px}}
+
+/* Financial desk: ink, paper and cobalt. */
+:root{--ink:#111f38;--blue:#254cc8;--line:#ced6e3}
+body{background:#f3f5fa;color:var(--ink);font-family:Inter,"Helvetica Neue",sans-serif}
+header{background:#101d35;border-bottom:3px solid #6487ff}
+.brand{display:flex;align-items:center;gap:12px;letter-spacing:-.04em}
+.mark{display:grid;place-items:center;height:32px;width:32px;border-radius:7px;background:#a5baff;color:#101d35}
+header a{color:#e4ebff;text-decoration:none}
+main{max-width:1350px}h1{color:#13243f}
+nav button[aria-pressed=true]{color:var(--blue);border-color:var(--blue)}
+aside,article{border-color:var(--line);border-radius:12px}
+aside{border-top:4px solid var(--blue)}aside h2{font-size:1.35rem;letter-spacing:-.04em}
+.hero{background:linear-gradient(112deg,#132341 0%,#203e70 100%);border:0;position:relative;overflow:hidden;padding:30px}
+.hero:after{content:"";position:absolute;right:-2.5rem;top:-3rem;width:12rem;height:12rem;border:1px solid #ffffff24;border-radius:50%;box-shadow:0 0 0 20px #ffffff08,0 0 0 42px #ffffff06;pointer-events:none}
+.hero small{color:#cbd9ff}.hero .introTitle{font:500 clamp(2.7rem,6vw,5rem)/1.08 Georgia,serif;letter-spacing:-.055em;margin:24px 0 15px}
+.intro p{max-width:37ch;color:#e0e7f4}.run{background:var(--blue);font-weight:650}.run:hover{background:#183cae}
+a{color:#234ab6}.chips,#history{display:flex;flex-wrap:wrap;gap:6px}
+.chips button,#history button,.export{border:1px solid var(--line);border-radius:6px;background:white;color:#284466;padding:5px 9px;font-size:.88rem}
+.chips button:hover,#history button:hover,.export:hover{background:#eaf0ff;border-color:#9fafe0}
+#recent{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+#recent h3{font-size:.95rem}.export{margin-top:14px;padding:9px 12px}
+.chart .row{border:0;padding:9px 0 5px}.track{height:10px;background:#edf0f6;border-radius:3px;margin-bottom:6px}
+.bar{height:100%;background:#9bafd3;border-radius:3px}.track:last-child .bar{background:#345cd3}
+:focus-visible{outline:3px solid #7097fd;outline-offset:3px}

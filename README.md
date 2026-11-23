@@ -6,7 +6,7 @@ This Python CLI answers questions like that one using SEC EDGAR. Each numeric an
 
 ## Open the dashboard
 
-On a Mac with the project installed, double-click **Open-Dashboard.command** in Finder. Your browser opens Filing Desk. Select one of four Apple sample questions, or select **Live SEC lookup**, enter a ticker, and click **Run lookup**. Live requests use the contact configured in `.env`. To explore the four saved examples on any computer without Python, open `dashboard/index.html` in a browser.
+On a Mac with the project installed, double-click **Open-Dashboard.command** in Finder. Your browser opens Filing Desk. The dashboard opens in **Live SEC lookup** mode. Enter a ticker and select **Run lookup** for the latest annual result, or choose a fiscal quarter, a filing list, or an earnings release. Revenue comparisons include a chart. Each result can be downloaded as a JSON evidence file with its sources. Your last five successful queries are stored in your browser for reuse. Choose **Apple sample** for the offline examples. Live requests use the contact configured in `.env`. To explore the four saved examples on any computer without Python, open `dashboard/index.html` in a browser.
 
 ### Host a public copy
 
