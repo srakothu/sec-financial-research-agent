@@ -1,7 +1,7 @@
 "use strict";
 const byId = id => document.getElementById(id);
 const result = byId("results");
-let mode = "sample";
+
 let version = 0;
 
 function el(tag, text, css) {
@@ -24,14 +24,14 @@ function row(label, value) {
 }
 function money(value, compact = false) {
   return new Intl.NumberFormat("en-US", {style:"currency", currency:"USD",
-    notation: compact ? "compact" : "standard", maximumFractionDigits:compact ? 3 : 2,
+    notation: compact ? "compact" : "standard", maximumFractionDigits:compact ? 2 : 4,
     minimumFractionDigits:0}).format(value);
 }
 function show(data) {
   result.replaceChildren();
   const hero = el("article", undefined, "hero");
   const fact = data.fact, growth = data.growth;
-  hero.append(el("small", (mode === "sample" ? "Saved SEC sample" : "Live SEC result") + " · " + (data.ticker || data.filings[0].cik)),
+  hero.append(el("small", "SEC filing · " + (data.ticker || data.filings[0].cik)),
     el("h2", data.company));
   hero.append(el("p", fact ? money(fact.value, true) : data.excerpts.length ? "Earnings announcement" : "Recent filings", "number"));
   if (fact) hero.append(el("p", fact.label + (fact.unit === "USD/shares" ? " per share" : "") + " · period ended " + fact.end));
@@ -61,7 +61,7 @@ function show(data) {
   const download = el("button", "Download evidence (.json)", "export");
   download.type = "button";
   download.onclick = () => {
-    const file = new Blob([JSON.stringify({source: mode, ...data}, null, 2)], {type:"application/json"});
+    const file = new Blob([JSON.stringify({source: "live", ...data}, null, 2)], {type:"application/json"});
     const url = URL.createObjectURL(file);
     const anchor = el("a");
     anchor.href = url;
@@ -71,29 +71,12 @@ function show(data) {
   };
   result.append(download);
 }
-function message(text) {
-  result.replaceChildren(el("article", text));
+function message(title, text) {
+  const panel = el("article", undefined, "notice");
+  panel.append(el("h2", title), el("p", text));
+  result.replaceChildren(panel);
+  byId("notice").textContent = title + ". " + text;
 }
-function switchMode(next) {
-  mode = next;
-  version++;
-  byId("sample").setAttribute("aria-pressed", next === "sample");
-  byId("live").setAttribute("aria-pressed", next === "live");
-  byId("presets").hidden = next !== "sample";
-  byId("fields").hidden = next !== "live";
-  drawHistory();
-  if (next === "sample") show(samples[Number(byId("preset").value)]);
-  else if (location.protocol === "file:") message("Open Open-Dashboard.command from the project folder to connect to live SEC data.");
-  else {
-    const card = el("article", undefined, "hero intro");
-    card.append(el("small","SEC EDGAR"),el("h2","Research a company." ,"introTitle"),
-      el("p","Enter a ticker and run a lookup to see annual financials, profitability and a historical trend model."));
-    result.replaceChildren(card);
-  }
-}
-byId("sample").onclick = () => switchMode("sample");
-byId("live").onclick = () => switchMode("live");
-byId("preset").onchange = () => show(samples[Number(byId("preset").value)]);
 byId("intent").onchange = () => {
   byId("financial").hidden = byId("intent").value !== "fact";
   byId("formFilter").hidden = byId("intent").value !== "filings";
@@ -103,7 +86,15 @@ byId("intent").onchange = () => {
 byId("metric").onchange = () => { byId("compare").hidden = byId("metric").value !== "revenue"; };
 byId("query").onsubmit = async event => {
   event.preventDefault();
-  if (mode !== "live" || location.protocol === "file:") return;
+  if (location.protocol === "file:") {
+    location.assign("https://sec-financial-research-agent.onrender.com/");
+    return;
+  }
+  const company = byId("company");
+  company.value = company.value.trim();
+  if (!company.reportValidity()) return;
+  document.body.classList.add("researching");
+  byId("explore").hidden = true;
   const ticket = ++version;
   const entry = Object.fromEntries(fieldIds.map(id => [id, byId(id).value]));
   entry.growth = byId("growth").checked;
@@ -122,17 +113,27 @@ byId("query").onsubmit = async event => {
     params.set("earnings_only","true");
     if (byId("date").value) params.set("event_date",byId("date").value);
   }
-  message("Looking up SEC filings…");
+  message("Retrieving filings for " + entry.company, "Checking the SEC filing history…");
+  result.setAttribute("aria-busy", "true");
   try {
     const response = await fetch(intent === "company" ? "/api/company?company=" + encodeURIComponent(entry.company) : "/api/research?" + params);
+    if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("The service is temporarily unavailable. Please try again.");
     const data = await response.json();
     if (ticket !== version) return;
     if (!response.ok) throw new Error(data.error || "The server could not complete this lookup.");
     if (intent === "company") showCompany(data, entry.company);
     else show(data);
+    byId("notice").textContent = "Results ready for " + data.company;
     rememberLookup(entry);
   } catch (err) {
-    if (ticket === version) message(err.message);
+    if (ticket === version) {
+      message("Lookup unavailable", err.message);
+      const retry = el("button", "Retry lookup", "export");
+      retry.onclick = () => byId("query").requestSubmit();
+      result.firstChild.append(retry);
+    }
+  } finally {
+    if (ticket === version) result.removeAttribute("aria-busy");
   }
 };
 function comparisonChart(fact, growth) {
@@ -156,12 +157,22 @@ function updatePeriod() {
   byId("year").disabled = hide || byId("financial").hidden;
 }
 byId("period").onchange = updatePeriod;
-updatePeriod();
-for (const ticker of ["AAPL","MSFT","JPM","NVDA"]) {
-  const chip = el("button", ticker);
-  chip.type = "button";
-  chip.onclick = () => { byId("company").value = ticker; };
-  byId("shortcuts").append(chip);
+for (const [ticker, name, industry] of [
+  ["MSFT", "Microsoft", "Software"], ["JPM", "JPMorgan Chase", "Banking"],
+  ["NVDA", "NVIDIA", "Semiconductors"], ["COST", "Costco", "Retail"]
+]) {
+  const button = el("button", undefined, "issuer");
+  button.type = "button";
+  const top = el("span", undefined, "issuer-top");
+  top.append(el("b", ticker), el("span", "↗"));
+  button.append(top, el("strong", name), el("small", industry));
+  button.onclick = () => {
+    byId("company").value = ticker;
+    byId("intent").value = "company";
+    byId("intent").onchange();
+    byId("query").requestSubmit();
+  };
+  byId("shortcuts").append(button);
 }
 
 const fieldIds = ["company","intent","metric","year","period","date","formType"];
@@ -173,9 +184,9 @@ try {
 } catch { /* Storage may be disabled in private browsing. */ }
 function drawHistory() {
   byId("history").replaceChildren();
-  byId("recent").hidden = !historyItems.length || mode !== "live";
+  byId("recent").hidden = !historyItems.length;
   for (const item of historyItems) {
-    const queryLabel = item.intent === "fact" ? item.metric.replaceAll("_"," ") : item.intent;
+    const queryLabel = item.intent === "fact" ? item.metric.replaceAll("_"," ") : {company:"Overview", filings:"Filings", event:"Earnings"}[item.intent];
     const button = el("button", item.company + " · " + queryLabel);
     button.type = "button";
     button.onclick = () => {
@@ -194,4 +205,10 @@ function rememberLookup(entry) {
   drawHistory();
 }
 byId("intent").onchange();
-switchMode(location.protocol === "file:" ? "sample" : "live");
+byId("year").value = new Date().getFullYear() - 1;
+drawHistory();
+if (location.protocol === "file:") {
+  byId("query").hidden = byId("explore").hidden = byId("recent").hidden = true;
+  message("Open the live dashboard", "Company research uses the hosted SEC connection.");
+  result.firstChild.append(link("Go to Filing Desk ↗", "https://sec-financial-research-agent.onrender.com/"));
+}

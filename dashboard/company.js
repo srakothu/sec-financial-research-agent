@@ -5,31 +5,6 @@ const metricNames = {
   operating_cash_flow: "Operating cash flow", net_margin: "Net margin"
 };
 
-function figure(value, unit) {
-  if (unit === "%") return value.toFixed(2) + "%";
-  const number = new Intl.NumberFormat("en-US", {notation:"compact", maximumFractionDigits:2}).format(value);
-  return number + " " + unit;
-}
-
-function chartSeries(card, periods, metric) {
-  card.replaceChildren();
-  const unit = periods.map(p => p.values[metric]?.unit).filter(Boolean).pop();
-  const points = periods.map(p => p.values[metric]).filter(v => v && v.unit === unit);
-  const max = Math.max(1, ...points.map(v => Math.abs(v.value)));
-  // Each observation is labelled with its sign. Bars show absolute magnitude.
-  for (const period of periods) {
-    const v = period.values[metric];
-    card.append(row(period.end, v ? figure(v.value, v.unit) : "Unavailable"));
-    if (v && v.unit === unit) {
-      const track = el("div", undefined, "track");
-      const bar = el("div", undefined, v.value < 0 ? "bar negative" : "bar");
-      bar.style.width = (100 * Math.abs(v.value) / max) + "%";
-      track.append(bar);
-      card.append(track);
-    }
-  }
-}
-
 const briefThemes = {
   growth: {title: "Growth", metrics: ["revenue", "operating_income", "operating_margin"]},
   profitability: {title: "Profitability", metrics: ["revenue", "net_income", "net_margin"]},
@@ -124,74 +99,124 @@ function renderBrief(output, brief, periods) {
   output.replaceChildren(heading, charts, findings, limit);
 }
 
-function showCompany(data, symbol) {
-  const periods = data.periods;
-  result.replaceChildren();
-  const title = el("article", undefined, "hero");
-  title.append(el("small", (data.ticker || symbol) + " · SEC annual filings"),
-    el("h2",data.company,"introTitle"));
-  if (periods.length) title.append(el("p",periods[0].end + " through " + periods.at(-1).end));
-  result.append(title);
-  if (!periods.length) {
-    result.append(el("article","No original 10-K, 20-F or 40-F annual reports were found for this filer."));
-    return;
-  }
-  const latest = periods.at(-1);
-  const grid = el("div",undefined,"metrics");
-  for (const key of ["revenue","net_income","operating_cash_flow","net_margin"]) {
-    const v = latest.values[key];
-    const cell = el("article");
-    cell.append(el("small",metricNames[key]),el("strong",v ? figure(v.value,v.unit) : "Unavailable"));
-    grid.append(cell);
-  }
-  result.append(grid);
-  const keys = Object.keys(metricNames).filter(k => periods.some(p => p.values[k]));
+function performancePanel(data, keys) {
+  const panel = el("div", undefined, "performance");
   if (keys.length) {
-    const series = el("article"), select = el("select"), bars = el("div");
-    select.setAttribute("aria-label","Annual series");
+    const chart = el("article"), head = el("div", undefined, "section-head");
+    const select = el("select"), plot = el("div");
+    select.setAttribute("aria-label", "Chart metric");
     for (const key of keys) {
-      const opt = el("option",metricNames[key]); opt.value = key; select.append(opt);
+      const option = el("option", metricNames[key]);
+      option.value = key;
+      select.append(option);
     }
-    select.onchange = () => chartSeries(bars, periods, select.value);
-    series.append(el("h3","Annual performance"),select,bars);
-    result.append(series);
+    select.onchange = () => {
+      const metric = select.value;
+      const evidence = el("details", undefined, "period-values");
+      evidence.append(el("summary", "Period figures and filings"));
+      for (const period of data.periods) {
+        const point = period.values[metric];
+        const record = el("div", undefined, "row");
+        record.append(link(period.end + " · " + period.form, period.url),
+          el("span", point ? point.value.toLocaleString("en-US", {maximumFractionDigits: 6}) + " " + point.unit : "Unavailable"));
+        evidence.append(record);
+      }
+      plot.replaceChildren(briefChart(data.periods, metric), evidence);
+    };
+    head.append(el("h3", "Annual performance"), select);
+    chart.append(head, plot);
+    panel.append(chart);
     select.onchange();
   }
-  const analysis = el("article");
-  analysis.append(el("h3","Trend investigation"));
-  if (data.revenue_growth !== null) analysis.append(row("Annual revenue change",figure(data.revenue_growth,"%")));
+  const signal = el("article", undefined, "signal");
+  signal.append(el("h3", "Historical comparison"));
   const t = data.trend;
   if (t) {
-    analysis.append(el("p",metricNames[t.metric] + " came in " + figure(Math.abs(t.gap),t.unit)
-      + (t.gap < 0 ? " below" : " above") + " its historical trend baseline."),
-      row("Historical baseline",figure(t.baseline,t.unit)),row("Reported",figure(t.actual,t.unit)),
-      el("small","Theil–Sen regression fitted to " + t.training_years + " earlier annual observations. The latest observation was held out. This comparison does not establish a cause."));
-  } else analysis.append(el("p","The trend model needs a latest value and three earlier annual observations in the same unit for revenue, net income or assets."));
-  result.append(analysis);
-  const ai = el("article"), button = el("button","Generate AI brief","export"), output = el("div", undefined, "brief-output");
+    const direction = t.gap === 0 ? "Matched the baseline" : t.gap > 0 ? "Above the baseline" : "Below the baseline";
+    signal.append(el("strong", direction), el("p", metricNames[t.metric] + " in the latest annual filing, compared with the trend from earlier years."),
+      row("Reported", briefNumber(t.actual, t.unit)), row("Trend baseline", briefNumber(t.baseline, t.unit)));
+    const method = el("details");
+    method.append(el("summary", "How this is calculated"), el("p", "A Theil–Sen regression fits a trend to " + t.training_years +
+      " earlier observations in the same unit. The latest year is held out for comparison."));
+    signal.append(method);
+  } else signal.append(el("p", "A trend comparison needs a latest figure and three earlier annual figures in the same currency for revenue, net income or assets."));
+  panel.append(signal);
+  return panel;
+}
+
+function analystPanel(data, symbol, keys) {
+  const ai = el("article"), button = el("button", "Generate AI brief", "primary"), output = el("div", undefined, "brief-output");
   output.setAttribute("aria-live", "polite");
-  ai.append(el("h3","AI analyst"),el("p",data.ai_enabled ?
-    "See what changed across annual filings, with charts and a short explanation." :
-    "Written analysis requires an OpenAI API key configured by the site owner. The historical trend model runs independently."));
-  if (data.ai_enabled && keys.length) ai.append(button,output);
-  result.append(ai);
+  ai.append(el("h3", "AI analyst"));
+  if (!data.ai_enabled || !keys.length) {
+    ai.append(el("p", !keys.length ? "This filer has too few tagged figures for an AI brief." : "AI briefs are currently unavailable. Explore the reported figures in Performance."));
+    return ai;
+  }
+  ai.append(el("p", "Investigate a change in the financials and see the annual filings behind each finding."), button, output);
   button.onclick = async () => {
     button.disabled = true;
-    output.replaceChildren(el("p","Selecting an investigation and reviewing the evidence…"));
+    button.textContent = "Generating…";
+    output.replaceChildren(el("p", "Reviewing annual figures for " + data.company + "…"));
     try {
-      const response = await fetch("/api/brief?company="+encodeURIComponent(symbol),{method:"POST", headers:{"Content-Type":"application/json"}});
+      const response = await fetch("/api/brief?company=" + encodeURIComponent(symbol), {method:"POST", headers:{"Content-Type":"application/json"}});
+      if (!response.headers.get("content-type")?.includes("application/json")) throw new Error("The analyst service is temporarily unavailable. Try again.");
       const brief = await response.json();
       if (!response.ok) throw new Error(brief.error || "Analysis unavailable.");
-      renderBrief(output, brief, periods);
+      renderBrief(output, brief, data.periods);
       button.hidden = true;
-    } catch (err) { output.replaceChildren(el("p",err.message)); button.disabled=false; }
+    } catch (err) {
+      output.replaceChildren(el("p", err.message));
+      button.textContent = "Retry AI brief";
+      button.disabled = false;
+    }
   };
+  return ai;
+}
+
+function showCompany(data, symbol) {
+  const periods = data.periods, latest = periods.at(-1);
+  const title = el("div", undefined, "company-title");
+  title.append(el("span", data.ticker || symbol, "ticker"), el("h2", data.company));
+  if (latest) title.append(el("small", "Annual results through " + latest.end));
+  result.replaceChildren(title);
+  if (!latest) {
+    result.append(el("article", "No original 10-K, 20-F or 40-F annual reports were found for this filer."));
+    return;
+  }
+  const metrics = el("div", undefined, "metrics");
+  for (const key of ["revenue", "net_income", "operating_cash_flow", "net_margin"]) {
+    const point = latest.values[key];
+    const cell = el("div");
+    cell.append(el("span", metricNames[key]), el("strong", point ? briefNumber(point.value, point.unit) : "Unavailable"));
+    if (key === "revenue" && data.revenue_growth != null) {
+      cell.append(el("small", (data.revenue_growth > 0 ? "+" : "") + briefNumber(data.revenue_growth, "%") + " year over year"));
+    }
+    metrics.append(cell);
+  }
+  const keys = Object.keys(metricNames).filter(k => periods.some(p => p.values[k]));
   const filings = el("article");
-  filings.append(el("h3","Annual filing sources"));
+  filings.append(el("h3", "Annual filing sources"));
   for (const p of [...periods].reverse()) {
-    const source = el("div",undefined,"row");
-    source.append(el("span",p.end),link("Open "+p.form,p.url));
+    const source = el("div", undefined, "row");
+    source.append(el("span", "Period ended " + p.end), link("Form " + p.form + " ↗", p.url));
     filings.append(source);
   }
-  result.append(filings);
+  const views = [["Performance", performancePanel(data, keys)], ["AI brief", analystPanel(data, symbol, keys)], ["Filings (" + periods.length + ")", filings]];
+  const nav = el("div", undefined, "report-nav");
+  nav.setAttribute("role", "group");
+  nav.setAttribute("aria-label", "Company report sections");
+  result.append(metrics, nav);
+  for (const [name, view] of views) {
+    const button = el("button", name);
+    view.id = "report-panel-" + nav.children.length;
+    button.setAttribute("aria-controls", view.id);
+    button.setAttribute("aria-pressed", String(!nav.children.length));
+    view.hidden = Boolean(nav.children.length);
+    button.onclick = () => {
+      for (const child of nav.children) child.setAttribute("aria-pressed", String(child === button));
+      for (const [, section] of views) section.hidden = section !== view;
+    };
+    nav.append(button);
+    result.append(view);
+  }
 }

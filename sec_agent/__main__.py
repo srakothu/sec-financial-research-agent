@@ -8,7 +8,6 @@ import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from .demo import demo_client, demo_queries
 from .edgar import Edgar
 from .facts import METRICS
 from .llm import OpenAIResearch
@@ -19,7 +18,6 @@ from .workflow import build_graph
 def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(description="Research SEC filings and cited financial facts.")
     cli.add_argument("--trace", action="store_true", help="Show LangGraph node names and parsed query")
-    cli.add_argument("--sample", action="store_true", help="Use the bundled Apple data with fact, filings, or event")
     commands = cli.add_subparsers(dest="command", required=True)
     ask = commands.add_parser("ask", help="Ask a natural-language question using OpenAI")
     ask.add_argument("question")
@@ -37,7 +35,6 @@ def parser() -> argparse.ArgumentParser:
     event.add_argument("company")
     event.add_argument("--date", help="Exact filing date, YYYY-MM-DD")
     event.add_argument("--earnings", action="store_true", help="Filter to Item 2.02")
-    commands.add_parser("demo", help="Run Apple examples with local SEC data and no credentials")
     commands.add_parser("graph", help="Print the compiled workflow as Mermaid")
     return cli
 
@@ -60,37 +57,24 @@ def main() -> int:
     load_dotenv()
     try:
         with ExitStack() as stack:
-            if args.command in ("demo", "graph"):
-                client = stack.enter_context(demo_client())
-                graph = build_graph(Edgar(client, interval=0))
-                if args.command == "graph":
-                    print(graph.get_graph().draw_mermaid())
-                else:
-                    print("OFFLINE DEMO · Apple filing sample · no live network or OpenAI calls")
-                    for question, query in demo_queries():
-                        print(f"\n{question}", flush=True)
-                        run(graph, {"query": query}, args.trace)
+            if args.command == "graph":
+                http = stack.enter_context(httpx.Client())
+                print(build_graph(Edgar(http)).get_graph().draw_mermaid())
                 return 0
 
-            if args.sample:
-                if args.command == "ask":
-                    raise ResearchError("Use fact, filings, or event to query the offline Apple sample.")
-                edgar = Edgar(stack.enter_context(demo_client()), interval=0)
-                print("OFFLINE SAMPLE · selected Apple filings", file=sys.stderr)
-            else:
-                user_agent = os.environ.get("SEC_USER_AGENT", "").strip()
-                if (
-                    not user_agent.isascii()
-                    or not all(char.isprintable() for char in user_agent)
-                    or not re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", user_agent)
-                    or "example.com" in user_agent.lower()
-                ):
-                    raise ResearchError("Set SEC_USER_AGENT in .env to the app name and your contact email.")
-                http = stack.enter_context(httpx.Client(headers={"User-Agent": user_agent}, timeout=20))
-                edgar = Edgar(http)
+            user_agent = os.environ.get("SEC_USER_AGENT", "").strip()
+            if (
+                not user_agent.isascii()
+                or not all(char.isprintable() for char in user_agent)
+                or not re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", user_agent)
+                or "example.com" in user_agent.lower()
+            ):
+                raise ResearchError("Set SEC_USER_AGENT in .env to the app name and your contact email.")
+            http = stack.enter_context(httpx.Client(headers={"User-Agent": user_agent}, timeout=20))
+            edgar = Edgar(http)
             if args.command == "ask":
                 if not os.environ.get("OPENAI_API_KEY", "").strip():
-                    raise ResearchError("Set OPENAI_API_KEY in .env, or use demo, fact, filings, or event.")
+                    raise ResearchError("Set OPENAI_API_KEY in .env, or use fact, filings, or event.")
                 if not 1 <= len(args.question.strip()) <= 2000:
                     raise ResearchError("Enter a question of 1 to 2,000 characters.")
                 openai = stack.enter_context(OpenAI(timeout=35, max_retries=1))

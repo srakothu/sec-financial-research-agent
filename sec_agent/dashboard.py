@@ -16,7 +16,6 @@ import httpx
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
-from .demo import demo_client, demo_queries
 from .edgar import Edgar
 from .models import Query, ResearchError
 from .workflow import build_graph
@@ -24,7 +23,7 @@ from .workflow import build_graph
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 ASSETS = {"/": ("index.html", "text/html"), "/style.css": ("style.css", "text/css"),
-          "/company.js": ("company.js", "text/javascript"), "/app.js": ("app.js", "text/javascript"), "/samples.js": ("samples.js", "text/javascript")}
+          "/company.js": ("company.js", "text/javascript"), "/app.js": ("app.js", "text/javascript")}
 
 
 def present(state):
@@ -39,17 +38,11 @@ def present(state):
     }
 
 
-def samples():
-    with demo_client() as client:
-        graph = build_graph(Edgar(client, interval=0))
-        return [present(graph.invoke({"query": q})) for _, q in demo_queries()]
-
-
 @lru_cache(maxsize=1)
 def live_client():
     agent = os.getenv("SEC_USER_AGENT", "").strip()
     if not agent.isascii() or not agent.isprintable() or "example.com" in agent.lower() or not re.search(r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}", agent):
-        raise ResearchError("Live lookups need the site owner's contact email in SEC_USER_AGENT. The Apple sample is available now.")
+        raise ResearchError("Live lookups need the site owner's contact email in SEC_USER_AGENT.")
     # One synchronous worker keeps outbound calls sequential across visitors.
     return Edgar(httpx.Client(headers={"User-Agent": agent}, timeout=15))
 

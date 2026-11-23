@@ -3,8 +3,8 @@ from pathlib import Path
 
 import httpx
 
-from .edgar import DATA, SUBMISSIONS, TICKERS
-from .models import Query
+from sec_agent.edgar import DATA, SUBMISSIONS, TICKERS
+from sec_agent.models import Query
 
 APPLE = "0000320193"
 EVENT_ACCESSION = "0000320193-25-000055"
@@ -14,7 +14,7 @@ EXHIBIT_DOC = "a8-kex991q2202503292025.htm"
 
 
 def demo_client() -> httpx.Client:
-    sample = json.loads((Path(__file__).parent / "sample" / "apple.json").read_text(encoding="utf-8"))
+    sample = json.loads((Path(__file__).parent / "fixtures" / "apple.json").read_text(encoding="utf-8"))
     responses = {
         TICKERS: ("json", sample["tickers"]),
         f"{SUBMISSIONS}CIK{APPLE}.json": ("json", sample["submissions"]),

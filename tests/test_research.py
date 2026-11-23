@@ -4,7 +4,7 @@ import httpx
 import pytest
 from openai import OpenAI
 
-from sec_agent.demo import demo_client, demo_queries
+from .filing_fixtures import demo_client, demo_queries
 from sec_agent.edgar import Edgar, extract_excerpts
 from sec_agent.facts import revenue_growth, select_fact
 from sec_agent.llm import OpenAIResearch

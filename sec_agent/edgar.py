@@ -31,8 +31,8 @@ class Edgar:
             code = exc.response.status_code
             if code in (403, 429):
                 raise ResearchError(
-                    f"SEC returned HTTP {code}. Check your SEC_USER_AGENT contact, "
-                    "wait before retrying, or run the offline demo."
+                    f"SEC returned HTTP {code}. Check your SEC_USER_AGENT contact and "
+                    "wait before retrying."
                 ) from exc
             raise ResearchError(f"SEC returned HTTP {code} for {url}.") from exc
         except httpx.RequestError as exc:
