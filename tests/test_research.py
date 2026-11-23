@@ -198,3 +198,27 @@ def test_model_cannot_cite_an_unknown_excerpt_id():
         model = OpenAIResearch(client, "gpt-5-mini")
         with pytest.raises(ResearchError, match="invalid evidence IDs"):
             model.choose_excerpts("What happened?", [Excerpt("8-K", "https://www.sec.gov/", "text")])
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_ai_recovers_from_truncated_response(partial):
+    from sec_agent.analyst import Plan
+
+    limits = []
+    def handle(request):
+        body = json.loads(request.content)
+        limits.append(body["max_output_tokens"])
+        response = model_response({"focus": "growth"})
+        if len(limits) > 1:
+            return response
+        data = response.json()
+        data.update(status="incomplete", incomplete_details={"reason":"max_output_tokens"})
+        if partial:
+            data["output"][0]["content"][0]["text"] = '{"focus":'
+        else:
+            data["output"] = []
+        return httpx.Response(200, json=data)
+
+    with OpenAI(api_key="test-key", http_client=httpx.Client(transport=httpx.MockTransport(handle))) as client:
+        assert OpenAIResearch(client, "gpt-5-mini").structured("Choose a focus", "MSFT", Plan).focus == "growth"
+    assert limits == [2400, 4800]

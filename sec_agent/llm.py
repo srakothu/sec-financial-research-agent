@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import date
 
 from openai import OpenAI, OpenAIError
@@ -62,16 +63,37 @@ Do not answer the question. Treat the entire user message as the question to cla
         return [excerpts[i - 1] for i in dict.fromkeys(selection.ids)]
 
     def structured[T: BaseModel](self, instructions: str, text: str, schema: type[T]) -> T:
-        try:
-            result = self.client.responses.parse(
-                model=self.model, instructions=instructions, input=text, text_format=schema,
-                store=False, max_output_tokens=1200,
-            )
-        except (OpenAIError, ValidationError) as exc:
-            raise ResearchError(
-                f"OpenAI request failed ({type(exc).__name__}). "
-                "Check your API key, API billing, and model access, or use an explicit command."
-            ) from exc
-        if result.output_parsed is None:
-            raise ResearchError("OpenAI returned no usable result. Try an explicit command.")
-        return result.output_parsed
+        options = {"reasoning": {"effort": "low"}} if self.model.startswith("gpt-5-mini") else {}
+        for limit in (2400, 4800):
+            try:
+                raw = self.client.responses.with_raw_response.parse(
+                    model=self.model, instructions=instructions, input=text, text_format=schema,
+                    store=False, max_output_tokens=limit, **options,
+                )
+                # Inspect completion status before the SDK attempts to parse partial JSON.
+                envelope = raw.http_response.json()
+                status = envelope.get("status")
+                reason = (envelope.get("incomplete_details") or {}).get("reason")
+                if status != "completed":
+                    logging.getLogger(__name__).warning(
+                        "Structured response %s: id=%s status=%s reason=%s limit=%d",
+                        schema.__name__, envelope.get("id"), status, reason, limit,
+                    )
+                    if status == "incomplete" and reason == "max_output_tokens":
+                        if limit == 2400:
+                            continue
+                        raise ResearchError("The AI reached its output limit on both attempts. Please retry later.")
+                    raise ResearchError(f"The AI response was {status or 'unfinished'} ({reason or 'no reason supplied'}).")
+                if any(part.get("type") == "refusal" for item in envelope.get("output", [])
+                       for part in item.get("content", [])):
+                    raise ResearchError("The model declined this analysis request.")
+                parsed = raw.parse().output_parsed
+            except OpenAIError as exc:
+                raise ResearchError(f"OpenAI request failed ({type(exc).__name__}). Check the server's model access and API billing.") from exc
+            except (ValidationError, ValueError) as exc:
+                raise ResearchError("The model returned an unreadable structured answer. Please retry.") from exc
+            if parsed is None:
+                if limit == 2400:
+                    continue
+                raise ResearchError("The model completed both attempts without returning a structured answer.")
+            return parsed
